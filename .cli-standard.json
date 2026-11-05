@@ -1,0 +1,5 @@
+{
+  "exceptions": {
+    "AUTH-NO-EXTERNAL": "Glue signs in only through Firebase signInWithPopup. The sign-in page loads that one library, pinned to an exact version, and nothing else (Permitted Variation 4)."
+  }
+}

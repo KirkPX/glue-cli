@@ -1,0 +1,11 @@
+{
+  "baseUrl": "https://api.gluegroups.com/graphql",
+  "readOnly": false,
+  "timeoutMs": 30000,
+  "streamKey": "<your-value>",
+  "firebase": {
+    "webKey": "<your-value>",
+    "authDomain": "<your-value>",
+    "projectId": "<your-value>"
+  }
+}
