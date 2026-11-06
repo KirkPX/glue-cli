@@ -6,3 +6,4 @@ Steps: install from the README in a normal PowerShell window; open a new window 
 
 | Date | Version | Windows | Node | Result | Problems |
 |---|---|---|---|---|---|
+| 2026-11-06 | 2.1.0 | 11 | 24 | Pass for two testers: install, `glue login --email`, `glue me`, and a Claude Code skill reading a thread | PowerShell opened in `system32`, so the clone went there. Fixed: the steps now start with `cd ~`. Not run: Credential Manager check, piped output, paths with spaces, `--dry-run`, `--read-only`, Ctrl-C, uninstall |
