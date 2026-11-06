@@ -101,6 +101,10 @@ describe('login through the built CLI', () => {
   });
   let auth: Server;
   let tokenUrl = '';
+  let authBase = '';
+  const authCalls: Array<{ path: string; body: any }> = [];
+  /** How the fake Glue answers a request for an emailed code. */
+  let startAnswer: { status: number; body: unknown } = { status: 200, body: { authType: 'email' } };
   const jwt = `h.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64')}.s`;
 
   beforeAll(async () => {
@@ -109,13 +113,31 @@ describe('login through the built CLI', () => {
       let raw = '';
       req.on('data', (c) => (raw += c));
       req.on('end', () => {
+        const route = new URL(req.url ?? '/', 'http://x').pathname;
+        if (route !== '/token') {
+          const body = JSON.parse(raw);
+          authCalls.push({ path: route, body });
+          const answer =
+            route === '/auth/start' ? startAnswer
+            : route === '/auth/verify'
+              ? body.code === 'ABC123'
+                ? { status: 200, body: { token: 'custom-token' } }
+                : { status: 400, body: { code: 400, error: 'bad_request', reason: 'invalid_code' } }
+            : route === '/identity' && body.token === 'custom-token'
+              ? { status: 200, body: { idToken: jwt, refreshToken: 'good-token' } }
+              : { status: 400, body: { error: { message: 'INVALID_CUSTOM_TOKEN' } } };
+          res.writeHead(answer.status, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(answer.body));
+          return;
+        }
         const good = raw.includes('refresh_token=good-token');
         res.writeHead(good ? 200 : 400, { 'content-type': 'application/json' });
         res.end(JSON.stringify(good ? { id_token: jwt, expires_in: '3600', refresh_token: 'good-token' } : { error: { message: 'INVALID_REFRESH_TOKEN' } }));
       });
     });
     await new Promise<void>((resolve) => auth.listen(0, '127.0.0.1', () => resolve()));
-    tokenUrl = `http://127.0.0.1:${(auth.address() as AddressInfo).port}/token`;
+    authBase = `http://127.0.0.1:${(auth.address() as AddressInfo).port}`;
+    tokenUrl = `${authBase}/token`;
   });
   afterAll(async () => {
     await glue.stop();
@@ -124,11 +146,14 @@ describe('login through the built CLI', () => {
   });
 
   /** Runs `login --paste` with the token on stdin, as a script would. */
-  const paste = (token: string, env: Record<string, string> = {}) =>
+  const paste = (token: string, env: Record<string, string> = {}) => cli(['login', '--paste'], token, env);
+
+  /** Runs the built CLI with `input` on stdin. */
+  const cli = (args: string[], input: string, env: Record<string, string> = {}) =>
     new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
       const child = execFile(
         process.execPath,
-        [ENTRY, 'login', '--paste'],
+        [ENTRY, ...args],
         {
           env: {
             ...process.env,
@@ -142,15 +167,110 @@ describe('login through the built CLI', () => {
             GLUE_CLI_CREDENTIALS_FILE: '',
             GLUE_TOKEN_URL: tokenUrl,
             GLUE_API_URL: glue.url,
+            GLUE_AUTH_URL: authBase,
+            GLUE_IDENTITY_URL: `${authBase}/identity`,
             ...env,
           },
         },
         (error, stdout, stderr) => resolve({ code: error ? 1 : 0, stdout, stderr }),
       );
-      child.stdin?.end(token);
+      child.stdin?.end(input);
     });
 
+  const saved = () => path.join(home.configDir, 'credentials.json');
+  const signOut = () => run(['logout'], { home: home.home, signedOut: true });
+  /** The error is the JSON after any progress lines. */
+  const failure = (stderr: string) => JSON.parse(stderr.slice(stderr.indexOf('{')));
+
+  it('--email signs in with the emailed code, typed with spaces and in lower case', async () => {
+    await signOut();
+    authCalls.length = 0;
+    const result = await cli(['login', '--email', 'person@example.com'], 'ab c123\n');
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ loggedIn: true, id: 'usr_derived' });
+    expect(result.stderr).toContain('sent a sign-in code to person@example.com');
+    expect(authCalls.map((c) => c.path)).toEqual(['/auth/start', '/auth/verify', '/identity']);
+    expect(authCalls[0].body).toEqual({ address: 'person@example.com' });
+    expect(authCalls[1].body).toEqual({ address: 'person@example.com', code: 'ABC123' });
+    expect(readFileSync(saved(), 'utf8')).toContain('good-token');
+    expect(result.stdout + result.stderr).not.toMatch(/good-token|custom-token/);
+  });
+
+  it('--email with no address asks for it first', async () => {
+    await signOut();
+    authCalls.length = 0;
+    const result = await cli(['login', '--email'], 'person@example.com\nABC123\n');
+    expect(result.code).toBe(0);
+    expect(authCalls[0].body).toEqual({ address: 'person@example.com' });
+  });
+
+  it('a wrong code saves nothing and says why', async () => {
+    await signOut();
+    const result = await cli(['login', '--email', 'person@example.com'], 'ZZZ999\n');
+    expect(result.code).toBe(1);
+    expect(failure(result.stderr).message).toContain('invalid code');
+    expect(existsSync(saved())).toBe(false);
+  });
+
+  it('a code that is not 6 characters is refused before Glue sees it', async () => {
+    await signOut();
+    authCalls.length = 0;
+    const result = await cli(['login', '--email', 'person@example.com'], '12\n');
+    expect(result.code).toBe(1);
+    expect(authCalls.map((c) => c.path)).toEqual(['/auth/start']);
+  });
+
+  it('no code on input ends with a reason, not a hang', async () => {
+    await signOut();
+    const result = await cli(['login', '--email', 'person@example.com'], '');
+    expect(result.code).toBe(1);
+    expect(failure(result.stderr).message).toContain('No answer');
+  });
+
+  it('a bad address is refused before any email is sent', async () => {
+    authCalls.length = 0;
+    const result = await cli(['login', '--email', 'not-an-address'], '');
+    expect(result.code).toBe(1);
+    expect(failure(result.stderr).message).toContain('not an email address');
+    expect(authCalls).toHaveLength(0);
+  });
+
+  it('a workspace on company sign-in is told to use the browser, and no code is asked for', async () => {
+    await signOut();
+    authCalls.length = 0;
+    startAnswer = { status: 200, body: { authType: 'sso', authUrl: 'https://sso.example.com' } };
+    try {
+      const result = await cli(['login', '--email', 'person@example.com'], 'ABC123\n');
+      expect(result.code).toBe(1);
+      expect(JSON.parse(result.stderr).message).toContain('company login');
+      expect(authCalls.map((c) => c.path)).toEqual(['/auth/start']);
+    } finally {
+      startAnswer = { status: 200, body: { authType: 'email' } };
+    }
+  });
+
+  it('a sign-in Glue does not know points to --email', async () => {
+    const denied = createServer((_, res) => {
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+    await new Promise<void>((resolve) => denied.listen(0, '127.0.0.1', () => resolve()));
+    const url = `http://127.0.0.1:${(denied.address() as AddressInfo).port}/graphql`;
+    const result = await paste('good-token', { GLUE_API_URL: url });
+    await new Promise<void>((resolve) => denied.close(() => resolve()));
+    expect(result.code).toBe(1);
+    expect(JSON.parse(result.stderr).hint).toContain('glue login --email');
+  });
+
+  it('a token with no user ID is an unfinished sign-in, so plain login signs in again', async () => {
+    await signOut();
+    const result = await cli(['login'], 'good-token', { GLUE_REFRESH_TOKEN: 'left-over' });
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ loggedIn: true, id: 'usr_derived' });
+  });
+
   it('a bad token saves nothing and keeps the reason', async () => {
+    await signOut();
     const result = await paste('bad-token');
     expect(result.code).toBe(1);
     expect(JSON.parse(result.stderr).message).toContain('INVALID_REFRESH_TOKEN');

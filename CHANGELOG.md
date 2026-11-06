@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.0
+
+- `glue login --email` signs in with a code that Glue emails, the way Glue's app offers
+  "sign in with email". It needs no browser, so it also works over SSH.
+- A Google sign-in that Glue does not know is refused with the reason, and points to
+  `--email`. It used to show only "401 Unauthorized".
+- A saved token with no user ID no longer blocks plain `glue login`. It signs in again.
+
 ## 2.0.0
 
 ### Changes that can break a script

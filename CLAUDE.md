@@ -8,7 +8,7 @@ CLI for [Glue](https://glue.co) messaging: GraphQL API plus GetStream chat layer
 
 ```bash
 npm run setup               # Install, build, link, and check
-glue login                  # Browser sign-in. `glue login --paste` with no browser
+glue login                  # Browser sign-in. `--email` for a code by email, `--paste` with a token
 glue me                     # Verify
 ```
 

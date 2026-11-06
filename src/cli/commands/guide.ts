@@ -13,6 +13,7 @@ Comprehensive reference for agents driving the Glue CLI. Run \`glue guide\` to p
 \`\`\`
 glue login            # Sign in, or show the sign-in when you already have one
 glue login --force    # Sign in again
+glue login --email    # Sign in with a code Glue emails you. Use it if Glue's app emails you a code
 glue login --paste    # Sign in without a browser: paste the token, or pipe it in
 glue login --status   # Show current token state
 glue login --refresh  # Force token refresh
