@@ -1,11 +1,12 @@
-// `glue login` signs in through the browser, or with --paste in the terminal. It proves the token
+// `glue login` signs in through the browser, with a code Glue emails (--email), or with --paste. It proves the token
 // works against Glue before it saves anything, and it works out the user ID from the token.
 
 import { getCredentialStore, storeLabel } from '../../auth.js';
 import { GlueAPIClient } from '../../client-graphql.js';
 import { config, envSignInVars, requireSignInSettings, signInHint, validateConfig } from '../../config.js';
-import { LoginError, UsageError } from '../../errors.js';
+import { ApiError, LoginError, UsageError } from '../../errors.js';
 import { findOpener } from '../../login/browser.js';
+import { emailLogin } from '../../login/email.js';
 import { promptSecret } from '../../login/prompt.js';
 import { runBrowserLogin } from '../../login/server.js';
 import { ACCESS_TOKEN, REFRESH_TOKEN } from '../../services/migrate.js';
@@ -19,6 +20,8 @@ export type LoginOpts = FormatOptions & {
   token?: string;
   force?: boolean;
   paste?: boolean;
+  /** true when --email is given with no address. */
+  email?: string | boolean;
 };
 
 type Verified = { loggedIn: true; id: string; name: string; credentialStore: string };
@@ -47,14 +50,21 @@ export async function loginCommand(opts: LoginOpts = {}): Promise<void> {
     return;
   }
 
-  // Already signed in: report it. Only --force and --paste sign in again.
-  if (!opts.force && !opts.paste && config.glue.refreshToken) {
+  const byEmail = opts.email !== undefined && opts.email !== false;
+
+  // Already signed in: report it. --force, --paste and --email sign in again. A saved token with
+  // no user ID is a sign-in that never finished, so it signs in again too.
+  if (!opts.force && !opts.paste && !byEmail && config.glue.refreshToken && config.glue.userId) {
     await showStatus(r);
     return;
   }
 
   requireSignInSettings();
-  const verified = opts.paste || !canUseBrowser() ? await pasteLogin() : await runBrowserLogin({ accept: verify });
+  const verified = byEmail
+    ? await verify(await emailLogin(typeof opts.email === 'string' ? opts.email : undefined))
+    : opts.paste || !canUseBrowser()
+      ? await pasteLogin()
+      : await runBrowserLogin({ accept: verify });
   report(verified, r);
 }
 
@@ -125,7 +135,18 @@ export async function verify(credential: string): Promise<Verified> {
   if (!refreshToken) throw new LoginError('Nothing entered.');
 
   const accessToken = await new TokenRefreshService(refreshToken, undefined, { persist: false }).getValidToken();
-  const me = await new GlueAPIClient({ accessToken }).getMe();
+  let me;
+  try {
+    me = await new GlueAPIClient({ accessToken }).getMe();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      throw new LoginError(
+        'Glue does not know this account. It is not the one you use to sign in to Glue.',
+        'If Glue emails you a code to sign in, run `glue login --email`. Otherwise sign in with the account you use for Glue.',
+      );
+    }
+    throw error;
+  }
 
   writeConfig({ userId: me.id });
   const store = getCredentialStore();

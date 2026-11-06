@@ -1,7 +1,7 @@
 {
   "name": "@kirkpx/glue-cli",
-  "version": "2.0.0",
-  "description": "CLI for Glue (glue.co) \u2014 threads, messages, groups, reactions, real-time watch, over the GraphQL API + GetStream chat layer",
+  "version": "2.1.0",
+  "description": "CLI for Glue (glue.co) — threads, messages, groups, reactions, real-time watch, over the GraphQL API + GetStream chat layer",
   "main": "./dist/lib.js",
   "types": "./dist/lib.d.ts",
   "bin": {

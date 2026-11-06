@@ -29,10 +29,14 @@ window, because an open window keeps the old PATH. You need no compiler.
 
 ```bash
 glue login            # opens a local page in your browser, for Google sign-in
+glue login --email    # Glue emails you a code to type in. No browser needed
 glue login --force    # sign in again, when you already have a saved sign-in
 glue login --paste    # no browser: paste a refresh token, or pipe it in
 glue logout
 ```
+
+Use the way you sign in to Glue itself. If Glue's app emails you a code, use `--email`. A
+Google account that Glue does not know is refused, and the message points to `--email`.
 
 With a saved sign-in, plain `glue login` only shows it. Running `glue` with no arguments signs
 you in if you never have, and shows help otherwise.
@@ -153,7 +157,7 @@ Full agent-oriented reference with flags, gotchas, and patterns: **`glue guide`*
 | `glue thread-add/remove/close/reopen/update`, `glue delete-thread` | Thread management |
 | `glue delete-message <id>` | Delete a message |
 | `glue tone` | Print your tone file (`tone.md` in the settings folder), to read before drafting |
-| `glue login [--status\|--refresh\|--force\|--paste]` / `glue logout` / `glue me` | Sign-in & identity |
+| `glue login [--status\|--refresh\|--force\|--email\|--paste]` / `glue logout` / `glue me` | Sign-in & identity |
 | `glue doctor` | Check the install, settings file and sign-in |
 | `glue config path\|show` / `glue auth` | Settings file / saved sign-in |
 

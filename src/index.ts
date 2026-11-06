@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name('glue')
   .description('Glue Groups CLI — messaging, threads, reactions, edits. Run `glue guide` for a full agent-oriented reference.')
-  .version('2.0.0')
+  .version('2.1.0')
   .option('--json', 'Print JSON, even at a terminal')
   .addOption(new Option('--pretty', 'Print readable text, even in a pipe').hideHelp())
   .option('--read-only', 'Refuse any command that would change data')
@@ -51,6 +51,7 @@ program
   .option('--refresh', 'Renew the access token now')
   .option('--force', 'Sign in again, even if already signed in')
   .option('--paste', 'Enter the token in the terminal instead of a browser')
+  .option('--email [address]', 'Sign in with a code Glue emails to you. No browser needed')
   .addOption(new Option('--token <refreshToken>', 'Refused, with the safe way to do this').hideHelp())
   .action(async (opts) => {
     const { loginCommand } = await import('./cli/commands/login.js');
