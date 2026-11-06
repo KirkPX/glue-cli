@@ -10,25 +10,19 @@ change can be previewed or blocked, and your sign-in stays in the OS keychain.
 
 ## Install
 
-You need **Node.js 20 or newer**.
-
-```bash
-npm install -g github:KirkPX/glue-cli
-glue login
-```
-
-To work on the code, or to run from a clone:
+You need **Node.js 20 or newer** and Git.
 
 ```bash
 git clone https://github.com/KirkPX/glue-cli.git
 cd glue-cli
 npm run setup
+glue login
 ```
 
 `npm run setup` installs, builds, links, and then tells you where you stand. If the `glue`
 command is not reachable yet, it says so and prints the fix.
 
-On Windows, install Node with `winget install OpenJS.NodeJS.LTS`, then use a **new** PowerShell
+On Windows, install Node and Git with `winget install OpenJS.NodeJS.LTS Git.Git`, then use a **new** PowerShell
 window, because an open window keeps the old PATH. You need no compiler.
 
 ## Sign in
