@@ -13,10 +13,20 @@ change can be previewed or blocked, and your sign-in stays in the OS keychain.
 You need **Node.js 20 or newer** and Git.
 
 ```bash
+cd ~
 git clone https://github.com/KirkPX/glue-cli.git
 cd glue-cli
 npm run setup
 glue login
+```
+
+`cd ~` puts the tool in your home folder. A PowerShell window can open in a system folder, where
+the clone would fail or be hard to find. To update later:
+
+```bash
+cd ~/glue-cli
+git pull
+npm run setup
 ```
 
 `npm run setup` installs, builds, links, and then tells you where you stand. If the `glue`
