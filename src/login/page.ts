@@ -11,7 +11,7 @@ function inScript(value: unknown): string {
 /**
  * The sign-in page served on loopback during `glue login`.
  *
- * Glue signs in only through Firebase's signInWithPopup, so this page must load Firebase's library.
+ * Glue's Google sign-in works only through Firebase's signInWithPopup, so this page must load Firebase's library.
  * It loads nothing else. Text from the sign-in goes in with textContent, never as HTML.
  */
 export function loginPage(opts: { nonce: string }): string {
