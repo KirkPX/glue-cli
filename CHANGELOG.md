@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.2.0
+
+### Changes that can break a script
+
+- You need **Node.js 22.18, 24.11 or newer**. On an older Node, or on 23 or 25, `npm run setup`
+  stops with npm's own message before it builds anything, and `glue doctor` marks Node.js as failed.
+- `chats --type` takes only `group` or `user`, and `--order` on `threads` and `chats` takes only
+  `lastMessage`, `created` or `unread`. Before, an unknown type was read as `group`.
+- `glue remind` refuses a time it cannot read, and a time in the past. Before, `1` meant the
+  year 2001.
+
+### New
+
+- `glue config set <name> <value>` and `glue config unset <name>` change one setting, so nobody
+  places a settings file by hand. Dotted names reach inside `firebase`. Token names are refused.
+
+### Fixes
+
+- `chats --last 3` prints 3 chats. Glue answers with one more than asked, and the CLI printed it.
+- A refusal from Glue shows every reason Glue gave, and the next step for its status: 401, 403,
+  404, 400 or 422, 429 and 5xx. GraphQL refusals, which arrive with HTTP 200, get the same steps.
+- A mistyped command line fails with the same JSON error as every other failure when the output
+  is JSON. An unknown command is named, instead of "too many arguments".
+- A save or delete never writes over a damaged credentials file. It stops and says what to do.
+  The one-time token move from an old `config.json` stops too, and keeps the token.
+- File errors read as plain words, including the one Windows gives when a file is in the way
+  of a folder.
+- An edit stops when it cannot save the current text for `glue restore` first.
+
+### Dependencies
+
+- New major versions: commander 15, @napi-rs/keyring 2, TypeScript 7, tsup 9, vitest 5, vite 8.
+- Updated: @apollo/client 4.3, graphql 16.14, stream-chat 9.54, tsx 4.23.
+- CI tests Node 22, 24 and 26 on macOS, Linux and Windows.
+
 ## 2.1.0
 
 - `glue login --email` signs in with a code that Glue emails, the way Glue's app offers

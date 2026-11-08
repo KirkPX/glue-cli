@@ -56,7 +56,7 @@ export async function doctorCommand(
   checks.push(
     process.env.GLUE_STREAM_KEY || settings.streamKey
       ? { name: "Chat setting", ok: true, value: "set" }
-      : { name: "Chat setting", ok: false, value: "not set — see docs/configuration.md" },
+      : { name: "Chat setting", ok: false, value: "not set — run `glue config set streamKey <value>`" },
   );
   checks.push(signInCheck());
   checks.push(credentialStoreCheck());
@@ -98,7 +98,7 @@ function signInSettingsCheck(settings: Settings): CheckResult {
     (process.env.GLUE_FIREBASE_PROJECT_ID || settings.firebase?.projectId);
   return set
     ? { name: "Sign-in settings", ok: true, value: "set" }
-    : { name: "Sign-in settings", ok: false, value: "not set — see docs/configuration.md" };
+    : { name: "Sign-in settings", ok: false, value: "not set — run `glue config set firebase.webKey <value>`, then authDomain and projectId" };
 }
 
 /** Whether a sign-in is reachable and where it comes from. Never the token itself. */
