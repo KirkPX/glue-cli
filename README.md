@@ -10,7 +10,7 @@ change can be previewed or blocked, and your sign-in stays in the OS keychain.
 
 ## Install
 
-You need **Node.js 20 or newer** and Git.
+You need **Node.js 22.18, 24.11 or newer** and Git.
 
 ```bash
 cd ~

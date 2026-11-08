@@ -6,7 +6,7 @@ documented commands.
 
 ## Runtime
 
-- Target Node.js 20 or newer.
+- Target Node.js 22.18, 24.11 or newer (`engines` in package.json). Node 23 and 25 are not supported.
 - Use TypeScript compiled to ESM JavaScript.
 - Do not rely on Bash, Zsh, PowerShell, `sed`, `awk`, `grep`, `curl`, `open`, `osascript`, `xdg-open` or other shell-specific tools for core CLI behavior.
 - If a helper must call an external program, first check that the program exists, and return a clear error when it does not.
