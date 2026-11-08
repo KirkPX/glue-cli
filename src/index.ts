@@ -173,7 +173,7 @@ program
   .option('--author <name>', 'Filter matched messages by author')
   .option('--last <n>', 'Number of threads to return (default: 20; with --group, every thread unless set)', positive)
   .option('--all', 'Paginate through ALL threads (ignores --last; walks past the ~500/page server cap)')
-  .option('--order <order>', 'Sort order: lastMessage, created, unread', 'lastMessage')
+  .addOption(new Option('--order <order>', 'Sort order').choices(['lastMessage', 'created', 'unread']).default('lastMessage'))
   .option('--exclude-chats', 'Exclude DM/chat threads')
   .action(async (opts) => {
     const { threadsCommand } = await import('./cli/commands/threads.js');
@@ -623,9 +623,9 @@ program
 program
   .command('chats')
   .description('List persistent chats — running group chats or 1:1 DMs (distinct from named threads)')
-  .option('--type <type>', 'Chat type: group or user', 'group')
+  .addOption(new Option('--type <type>', 'Chat type').choices(['group', 'user']).default('group'))
   .option('--last <n>', 'Max chats to fetch', positive, '30')
-  .option('--order <order>', 'Sort order: unread, lastMessage, created', 'unread')
+  .addOption(new Option('--order <order>', 'Sort order').choices(['unread', 'lastMessage', 'created']).default('unread'))
   .action(async (opts) => {
     const { chatsCommand } = await import('./cli/commands/chats.js');
     await chatsCommand({ ...program.opts(), ...opts });
