@@ -1,3 +1,4 @@
+import { fileErrorReason } from '../errors.js';
 import { configDir } from '../paths.js';
 import fs from 'fs';
 import path from 'path';
@@ -29,8 +30,6 @@ export function getLastSent(): LastSent | null {
 }
 
 export function saveLastSent(messageId: string, threadId: string, recipientIds?: string[], text?: string): void {
-  const dir = path.dirname(lastSentFile());
-  fs.mkdirSync(dir, { recursive: true });
   const data: LastSent = {
     messageId,
     threadId,
@@ -38,7 +37,13 @@ export function saveLastSent(messageId: string, threadId: string, recipientIds?:
     timestamp: Date.now(),
     text,
   };
-  fs.writeFileSync(lastSentFile(), JSON.stringify(data, null, 2) + '\n', { mode: 0o600 });
+  try {
+    fs.mkdirSync(path.dirname(lastSentFile()), { recursive: true });
+    fs.writeFileSync(lastSentFile(), JSON.stringify(data, null, 2) + '\n', { mode: 0o600 });
+  } catch (error) {
+    // The message is already sent. Only the duplicate check for the next send is lost.
+    console.error(`Sent, but could not record it for the duplicate check: ${fileErrorReason(error)}.`);
+  }
 }
 
 function isWithinWindow(last: LastSent): boolean {

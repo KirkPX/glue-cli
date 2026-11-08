@@ -5,9 +5,9 @@
 // with a one-time sign-in that Firebase exchanges for the usual refresh token.
 
 import { createInterface, type Interface } from 'node:readline';
-import { request, safeDetail } from '../client.js';
+import { request, extractSafeDetail } from '../client.js';
 import { config, requireRenewalSetting } from '../config.js';
-import { InterruptedError, LoginError, UsageError } from '../errors.js';
+import { InterruptedError, LoginError, UsageError, safeErrorMessage } from '../errors.js';
 
 const IDENTITY_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken';
 
@@ -102,7 +102,7 @@ async function exchangeCustomToken(customToken: string): Promise<string> {
   );
   const body = await response.text();
   if (!response.ok) {
-    throw new LoginError(`Could not finish the sign-in: ${safeDetail(body)}`, 'Check the sign-in settings with `glue doctor`.');
+    throw new LoginError(`Could not finish the sign-in: ${extractSafeDetail(body)}`, 'Check the sign-in settings with `glue doctor`.');
   }
   const refreshToken = (JSON.parse(body) as { refreshToken?: unknown }).refreshToken;
   if (typeof refreshToken !== 'string' || !refreshToken) {
@@ -111,16 +111,16 @@ async function exchangeCustomToken(customToken: string): Promise<string> {
   return refreshToken;
 }
 
-/** Glue answers errors as { reason } or { error }. */
+/** Glue answers sign-in errors as { reason } or { error }, in snake case. Show it as words. */
 function reason(body: string): string {
   try {
     const parsed = JSON.parse(body) as { reason?: unknown; error?: unknown };
     const text = [parsed.reason, parsed.error].find((v) => typeof v === 'string' && v && v !== 'unknown');
-    if (typeof text === 'string') return text.replace(/_/g, ' ');
+    if (typeof text === 'string') return safeErrorMessage(text.replace(/_/g, ' '));
   } catch {
-    // fall through
+    // Not JSON: the general reader says what it can.
   }
-  return safeDetail(body);
+  return extractSafeDetail(body);
 }
 
 /** One reader for every question, so piped answers are read in order. Ends cleanly on end of input. */

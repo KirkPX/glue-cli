@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { config, signInHint } from './config.js';
 import { ApiError, UsageError } from './errors.js';
-import { TRANSFER_TIMEOUT_MS, request, safeDetail, type RetryMode } from './client.js';
+import { TRANSFER_TIMEOUT_MS, request, extractSafeDetail, type RetryMode } from './client.js';
 import { TokenRefreshService } from './services/token-refresh.js';
 import type {
   GlueMessage,
@@ -38,10 +38,8 @@ export const graphqlFetch = async (uri: RequestInfo | URL, init: RequestInit = {
     status: response.status,
     statusText: response.statusText,
     operation,
-    safeDetail: safeDetail(await response.text()),
-    hint: response.status === 401 || response.status === 403
-      ? signInHint()
-      : undefined,
+    safeDetail: extractSafeDetail(await response.text()),
+    hint: response.status === 401 ? signInHint() : undefined,
   });
 };
 
@@ -359,13 +357,13 @@ export class GlueAPIClient {
       }
       const uploadRes = await request(ticket.url, { method: 'POST', headers, body: form }, { operation: 'File upload', timeoutMs: TRANSFER_TIMEOUT_MS });
       if (!uploadRes.ok) {
-        throw new ApiError({ status: uploadRes.status, statusText: uploadRes.statusText, operation: 'File upload', safeDetail: safeDetail(await uploadRes.text()), hint: uploadFailHint });
+        throw new ApiError({ status: uploadRes.status, statusText: uploadRes.statusText, operation: 'File upload', safeDetail: extractSafeDetail(await uploadRes.text()), hint: uploadFailHint });
       }
     } else {
       headers['Content-Type'] = contentType;
       const uploadRes = await request(ticket.url, { method: 'PUT', headers, body: buffer }, { operation: 'File upload', timeoutMs: TRANSFER_TIMEOUT_MS });
       if (!uploadRes.ok) {
-        throw new ApiError({ status: uploadRes.status, statusText: uploadRes.statusText, operation: 'File upload', safeDetail: safeDetail(await uploadRes.text()), hint: uploadFailHint });
+        throw new ApiError({ status: uploadRes.status, statusText: uploadRes.statusText, operation: 'File upload', safeDetail: extractSafeDetail(await uploadRes.text()), hint: uploadFailHint });
       }
     }
 

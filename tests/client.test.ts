@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'http';
 import type { AddressInfo } from 'net';
 import { afterEach, describe, expect, it } from 'vitest';
-import { callWithPolicy, request, retryAfterMs, safeDetail, type RetryInfo } from '../src/client.js';
+import { callWithPolicy, request, retryAfterMs, extractSafeDetail, type RetryInfo } from '../src/client.js';
 import { ApiError, NetworkError, TimeoutError } from '../src/errors.js';
 
 let server: Server | undefined;
@@ -138,9 +138,33 @@ describe('helpers', () => {
     expect(retryAfterMs(new Date(Date.now() + 5000).toUTCString())).toBeGreaterThan(0);
   });
 
-  it('takes the message from a JSON body and never the raw body', () => {
-    expect(safeDetail('{"errors":[{"message":"nope"}]}')).toBe('nope');
-    expect(safeDetail('<html>secret</html>')).toBe('no response detail');
-    expect(safeDetail('{"error":{"message":"TOKEN_EXPIRED"}}')).toBe('TOKEN_EXPIRED');
+  it('shows the service reason whole, with only tokens removed', () => {
+    expect(extractSafeDetail('{"errors":[{"message":"nope"}]}')).toBe('nope');
+    expect(extractSafeDetail('<html>secret</html>')).toBe('no response detail');
+    expect(extractSafeDetail('{"error":{"message":"TOKEN_EXPIRED"}}')).toBe('TOKEN_EXPIRED');
+    expect(extractSafeDetail('{"reason":"invalid_code"}')).toBe('invalid_code');
+    expect(extractSafeDetail('{"error":"user_not_found"}')).toBe('user not found');
+    // Several GraphQL errors: each one, so the person sees every value that was wrong.
+    expect(
+      extractSafeDetail('{"errors":[{"message":"text is required"},{"message":"threadID is not valid"}]}'),
+    ).toBe('text is required; threadID is not valid');
+    // A long reason is kept, not masked like a secret.
+    const long = 'The field subject must be shorter than 200 characters, and recipients must name at least one person';
+    expect(extractSafeDetail(JSON.stringify({ message: long }))).toBe(long);
+    expect(extractSafeDetail('{"message":"bad token Bearer abc.def.ghi"}')).toBe('bad token Bearer ****');
+    expect(extractSafeDetail('Service Unavailable')).toBe('Service Unavailable');
+  });
+
+  it.each([
+    [401, /glue login --force/],
+    [403, /may not be allowed/],
+    [404, /Check the ID/],
+    [400, /could not accept/],
+    [422, /could not accept/],
+    [429, /Wait a minute/],
+    [503, /Try again in a few minutes/],
+  ])('a %i refusal names the next step', (status, hint) => {
+    const error = new ApiError({ status, statusText: 'x', operation: 'GraphQL Test', safeDetail: 'd' });
+    expect(error.hint).toMatch(hint);
   });
 });

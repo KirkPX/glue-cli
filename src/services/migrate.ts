@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { FileCredentialStore, getCredentialStore } from '../auth.js';
 import { configDir, settingsFilePath } from '../paths.js';
+import { safeErrorMessage } from '../errors.js';
 
 export const REFRESH_TOKEN = 'refreshToken';
 export const ACCESS_TOKEN = 'accessToken';
@@ -87,9 +88,17 @@ function migrateFile(path: string): void {
   for (const key of TOKEN_KEYS) {
     const value = raw[key];
     if (typeof value !== 'string' || !value) continue;
-    store.setApiKey(key, value);
-    if (store.kind !== 'file') file.setApiKey(key, value);
-    if (store.getApiKey(key) !== value && file.getApiKey(key) !== value) return; // Leave config.json alone.
+    try {
+      store.setApiKey(key, value);
+      if (store.kind !== 'file') file.setApiKey(key, value);
+    } catch (error) {
+      // A locked keychain or a damaged credentials file. config.json still holds the token, so it
+      // stays as it is, and the next run tries again.
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(`The sign-in was not moved out of ${path}: ${safeErrorMessage(reason)}`);
+      return;
+    }
+    if (readBack(store, key) !== value && readBack(file, key) !== value) return; // Leave config.json alone.
   }
 
   const { refreshToken: _r, accessToken: _a, firebaseApiKey, firebaseAuthDomain, firebaseProjectId, ...rest } = raw as Record<string, any>;
@@ -110,5 +119,14 @@ function migrateFile(path: string): void {
     const oldTmp = `${path}.${process.pid}.tmp`;
     writeFileSync(oldTmp, '{}\n', { mode: 0o600 });
     renameSync(oldTmp, path);
+  }
+}
+
+/** A read that cannot reach the store counts as "not saved". */
+function readBack(store: { getApiKey(key: string): string | null }, key: string): string | null {
+  try {
+    return store.getApiKey(key);
+  } catch {
+    return null;
   }
 }

@@ -1,3 +1,4 @@
+import { ConfigError, fileErrorReason } from '../../errors.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { configDir } from '../../paths.js';
@@ -13,7 +14,9 @@ export async function toneCommand(opts: FormatOptions = {}): Promise<void> {
   try {
     text = readFileSync(path, 'utf8');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new ConfigError(`Cannot read the tone file: ${fileErrorReason(error)}.`, `Tone file: ${path}`);
+    }
     reporter(opts).result({ configured: false, path }, `No tone file. To add one, create ${path}`);
     return;
   }
