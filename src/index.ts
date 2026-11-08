@@ -655,7 +655,7 @@ program
 // for a pipe.
 program.parseAsync().catch(async (error: unknown) => {
   const { resolveFormat } = await import('./cli/output.js');
-  const { InterruptedError, safeErrorMessage } = await import('./errors.js');
+  const { InterruptedError, graphqlErrorHint, safeErrorMessage } = await import('./errors.js');
   // Ctrl-C at a prompt: a person is at the terminal and knows why it stopped.
   if (error instanceof InterruptedError) {
     console.error(error.message);
@@ -663,7 +663,7 @@ program.parseAsync().catch(async (error: unknown) => {
     return;
   }
   const message = safeErrorMessage(error instanceof Error ? error.message : String(error));
-  const rawHint = (error as { hint?: unknown })?.hint;
+  const rawHint = (error as { hint?: unknown })?.hint ?? graphqlErrorHint(error);
   const hint = typeof rawHint === 'string' && rawHint ? safeErrorMessage(rawHint) : undefined;
   const stack = program.opts().verbose && error instanceof Error && error.stack ? safeErrorMessage(error.stack) : undefined;
 

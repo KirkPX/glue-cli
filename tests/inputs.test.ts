@@ -68,7 +68,7 @@ describe('--text-file', () => {
   it.each([
     [['send', '--thread', 'thr_a', '--yes'], 'No text given'],
     [['send', 'words', '--text-file', 'x.txt', '--thread', 'thr_a', '--yes'], 'not both'],
-    [['send', '--text-file', 'no-such-file.txt', '--thread', 'thr_a', '--yes'], 'the file does not exist'],
+    [['send', '--text-file', 'no-such-file.txt', '--thread', 'thr_a', '--yes'], 'the file or its folder does not exist'],
   ])('%j says what is wrong and sends nothing', async (args, expected) => {
     const result = await run(args as string[], opts());
     expect(result.code).toBe(1);
@@ -119,5 +119,18 @@ describe('usage errors', () => {
   it('--pretty keeps the plain text', async () => {
     const result = await run(['threads', '--last', 'many', '--pretty'], opts());
     expect(result.stderr).toMatch(/^error: /);
+  });
+});
+
+describe('GraphQL refusals', () => {
+  it('a refusal at HTTP 200 shows the reason and a next step', async () => {
+    const empty = new FakeGlue({});
+    await empty.start();
+    const result = await run(['me'], { home: home.home, apiUrl: empty.url });
+    await empty.stop();
+    expect(result.code).toBe(1);
+    const body = JSON.parse(result.stderr.trim().split('\n').pop()!);
+    expect(body.message).toMatch(/no handler/);
+    expect(body.hint).toMatch(/reason above/);
   });
 });

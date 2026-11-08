@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
+import { rmSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { configDir } from '../src/paths.js';
@@ -52,6 +52,20 @@ describe('moving tokens out of an old config file', () => {
     // The second run reads from the store.
     const second = await run(['me'], { home: home.home, apiUrl: server.url, signedOut: true });
     expect(second.code).toBe(0);
+    await server.stop();
+  });
+
+  it('a damaged credentials file stops the move and loses no token', async () => {
+    const server = await glue();
+    const file = path.join(home.configDir, 'config.json');
+    const credentials = path.join(home.configDir, 'credentials.json');
+    writeFileSync(file, JSON.stringify(legacy));
+    writeFileSync(credentials, '{ damaged');
+    const result = await run(['me'], { home: home.home, apiUrl: server.url, signedOut: true });
+    expect(result.stderr).toMatch(/was not moved/);
+    expect(JSON.parse(readFileSync(file, 'utf8')).refreshToken).toBe('old-refresh');
+    expect(readFileSync(credentials, 'utf8')).toBe('{ damaged');
+    rmSync(credentials);
     await server.stop();
   });
 

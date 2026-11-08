@@ -22,8 +22,19 @@ export class ApiError extends Error {
     this.statusText = opts.statusText;
     this.operation = opts.operation;
     this.safeDetail = opts.safeDetail;
-    this.hint = opts.hint;
+    this.hint = opts.hint ?? apiErrorHint(opts.status);
   }
+}
+
+/** The next step for a refusal, so a person never sees a bare status code. */
+export function apiErrorHint(status: number): string | undefined {
+  if (status === 401) return 'Glue refused the sign-in. Run `glue login --force`, or check any GLUE_ token variables you set.';
+  if (status === 403) return 'The sign-in works, but this account may not be allowed to do this. `glue me` shows which account is in use.';
+  if (status === 404) return 'Check the ID. `glue threads`, `glue chats` and `glue people` list the ones you can use.';
+  if (status === 400 || status === 422) return 'Glue could not accept the values sent. The reason above says which.';
+  if (status === 429) return 'Glue is limiting requests. Wait a minute, then try again.';
+  if (status >= 500) return 'Glue had a problem answering. Try again in a few minutes.';
+  return undefined;
 }
 
 export class TimeoutError extends Error {
@@ -139,4 +150,18 @@ export function safeErrorMessage(raw: string): string {
     .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 ****')
     .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?/g, '****')
     .replace(/\b(key|token|access_token|refresh_token|id_token)=[^&\s"']+/gi, '$1=****');
+}
+
+/**
+ * A GraphQL refusal arrives with HTTP 200, so it has no status. Its `extensions.code` says the same
+ * thing a status would, so it gets the same next step.
+ */
+export function graphqlErrorHint(error: unknown): string | undefined {
+  if ((error as { name?: unknown })?.name !== 'CombinedGraphQLErrors') return undefined;
+  const errors = (error as { errors?: Array<{ extensions?: { code?: unknown } }> }).errors ?? [];
+  const codes = errors.map((e) => String(e?.extensions?.code ?? ''));
+  if (codes.includes('UNAUTHENTICATED')) return apiErrorHint(401);
+  if (codes.includes('FORBIDDEN')) return apiErrorHint(403);
+  if (codes.includes('NOT_FOUND')) return apiErrorHint(404);
+  return 'Glue refused the request. The reason above says why; check the IDs and values sent.';
 }

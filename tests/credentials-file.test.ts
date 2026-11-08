@@ -161,3 +161,32 @@ describe("keychain with file fallback", () => {
     expect(store.getApiKey("acct")).toBeNull();
   });
 });
+
+describe("a damaged credentials file", () => {
+  beforeEach(() => {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, '{"refreshToken": "kept-tok');
+  });
+
+  it("reads as signed out, so a lookup does not crash", () => {
+    expect(getCredentialStore().getApiKey("refreshToken")).toBeNull();
+  });
+
+  it("is never written over by a save", () => {
+    expect(() => getCredentialStore().setApiKey("refreshToken", "new")).toThrow(/damaged/);
+    expect(readFileSync(file, "utf8")).toBe('{"refreshToken": "kept-tok');
+  });
+
+  it("is never written over or removed by a delete", () => {
+    expect(() => getCredentialStore().deleteApiKey("refreshToken")).toThrow(/damaged/);
+    expect(readFileSync(file, "utf8")).toBe('{"refreshToken": "kept-tok');
+  });
+
+  it("names the next step", () => {
+    try {
+      new FileCredentialStore().setApiKey("refreshToken", "new");
+    } catch (error) {
+      expect((error as { hint?: string }).hint).toMatch(/Move or delete .*glue login/);
+    }
+  });
+});

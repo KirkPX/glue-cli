@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { UsageError } from '../errors.js';
+import { UsageError, fileErrorReason } from '../errors.js';
 
 /** Read a text file named by an option, as UTF-8. A failure names the option and file in plain words. */
 export async function readOptionFile(option: string, file: string): Promise<string> {
@@ -11,11 +11,7 @@ export async function readOptionFile(option: string, file: string): Promise<stri
 }
 
 export function fileProblem(error: unknown): string {
-  const code = (error as NodeJS.ErrnoException).code;
-  if (code === 'ENOENT') return 'the file does not exist';
-  if (code === 'EISDIR') return 'it is a folder, not a file';
-  if (code === 'EACCES' || code === 'EPERM') return 'you do not have permission';
-  return code ?? 'unknown error';
+  return fileErrorReason(error);
 }
 
 function readStdin(): Promise<string> {

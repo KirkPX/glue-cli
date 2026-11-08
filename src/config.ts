@@ -34,8 +34,9 @@ export const config = {
 };
 
 const SIGN_IN_SETTINGS_HINT =
-  'Set `firebase` in the settings file (`glue config path`), or set GLUE_FIREBASE_API_KEY, ' +
-  'GLUE_FIREBASE_AUTH_DOMAIN and GLUE_FIREBASE_PROJECT_ID. See docs/configuration.md.';
+  'Set each one with `glue config set firebase.webKey <value>`, then `firebase.authDomain` and ' +
+  '`firebase.projectId`, or set GLUE_FIREBASE_API_KEY, GLUE_FIREBASE_AUTH_DOMAIN and GLUE_FIREBASE_PROJECT_ID. ' +
+  'See docs/configuration.md.';
 
 /** Reactions, quote-replies, watch and thread activity go through the chat service. */
 export function requireChatKey(): string {
@@ -43,7 +44,7 @@ export function requireChatKey(): string {
   if (!key) {
     throw new ConfigError(
       'The chat setting is not set.',
-      'Set `streamKey` in the settings file (`glue config path`), or set GLUE_STREAM_KEY. See docs/configuration.md.',
+      'Run `glue config set streamKey <value>`, or set GLUE_STREAM_KEY. See docs/configuration.md.',
     );
   }
   return key;

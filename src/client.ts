@@ -144,18 +144,46 @@ async function fetchOnce(url: string, init: RequestInit, operation: string, time
   }
 }
 
-/** The message from a JSON error body, cleaned and shortened. Never the raw body. */
-export function safeDetail(body: string): string {
-  let detail: unknown;
+/**
+ * The service's own reason for a refusal. It is what tells a person which value was wrong, so it is
+ * shown whole, with only tokens removed. It reads Glue's GraphQL errors (`errors[].message`), its
+ * sign-in answers (`reason`, `error`) and Firebase's (`error.message`). An HTML error page holds
+ * nothing a person can act on, so it is left out.
+ */
+export function extractSafeDetail(body: string): string {
+  const text = body.trim();
+  if (!text || text.startsWith('<')) return 'no response detail';
+  let data: unknown;
   try {
-    const parsed = JSON.parse(body);
-    detail = parsed?.errors?.[0]?.message ?? parsed?.error?.message ?? parsed?.message ?? parsed?.error;
+    data = JSON.parse(text);
   } catch {
-    // Not JSON: an HTML error page or similar holds nothing a user can act on.
+    return tidy(text);
   }
-  if (typeof detail !== 'string' || !detail) return 'no response detail';
-  const clean = safeErrorMessage(detail);
-  return clean.length > 300 ? `${clean.slice(0, 300)}…` : clean;
+  if (typeof data === 'string') return data ? tidy(data) : 'no response detail';
+  if (!data || typeof data !== 'object') return 'no response detail';
+  const obj = data as Record<string, unknown>;
+  const parts: string[] = [];
+  const add = (value: unknown) => {
+    if (typeof value === 'string' && value && value !== 'unknown' && !parts.includes(value)) parts.push(value);
+  };
+  for (const key of ['message', 'reason', 'msg']) add(obj[key]);
+  if (typeof obj.error === 'string') add(obj.error.replace(/_/g, ' '));
+  else if (obj.error && typeof obj.error === 'object') add((obj.error as Record<string, unknown>).message);
+  if (Array.isArray(obj.errors)) {
+    for (const item of obj.errors.slice(0, 3)) {
+      if (typeof item === 'string') add(item);
+      else if (item && typeof item === 'object') {
+        const e = item as Record<string, unknown>;
+        add([e.title, e.detail ?? e.message].filter((x) => typeof x === 'string' && x).join(': '));
+      }
+    }
+  }
+  return parts.length ? tidy(parts.join('; ')) : 'no response detail';
+}
+
+function tidy(text: string): string {
+  const out = safeErrorMessage(text.replace(/\s+/g, ' ').trim());
+  return out.length > 300 ? `${out.slice(0, 297)}...` : out;
 }
 
 export interface CallPolicy extends RequestPolicy {

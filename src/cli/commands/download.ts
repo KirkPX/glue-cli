@@ -5,7 +5,7 @@ import { GlueAPIClient } from '../../client-graphql.js';
 import { config, validateConfig } from '../../config.js';
 import { reporter } from '../output.js';
 import { TRANSFER_TIMEOUT_MS, request } from '../../client.js';
-import { UsageError } from '../../errors.js';
+import { UsageError, fileErrorReason, safeErrorMessage } from '../../errors.js';
 
 const FILE_BASE = 'https://api.gluegroups.com/file';
 
@@ -140,7 +140,7 @@ export async function downloadCommand(
         fromMessage: f.fromMessage,
       });
     } catch (err: any) {
-      failed.push({ id: f.id, name: f.name, error: err?.message || String(err) });
+      failed.push({ id: f.id, name: f.name, error: err?.code ? `cannot save the file: ${fileErrorReason(err)}` : safeErrorMessage(err?.message || String(err)) });
     }
   }
 

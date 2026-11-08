@@ -1,6 +1,6 @@
 import { writeConfig } from '../cli/config-store.js';
 import { requireRenewalSetting, signInHint } from '../config.js';
-import { request, safeDetail } from '../client.js';
+import { request, extractSafeDetail } from '../client.js';
 import { LoginError, NetworkError, TimeoutError } from '../errors.js';
 
 export class TokenRefreshService {
@@ -67,7 +67,7 @@ export class TokenRefreshService {
 
     const body = await response.text();
     if (!response.ok) {
-      throw new LoginError(`Could not refresh the sign-in: ${safeDetail(body)}`, relogin);
+      throw new LoginError(`Could not refresh the sign-in: ${extractSafeDetail(body)}`, relogin);
     }
 
     const data = JSON.parse(body);

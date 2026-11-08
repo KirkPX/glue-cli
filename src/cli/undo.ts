@@ -1,3 +1,4 @@
+import { ConfigError, fileErrorReason } from '../errors.js';
 import { configDir } from '../paths.js';
 import fs from 'fs';
 import path from 'path';
@@ -22,14 +23,22 @@ export function undoPathFor(messageId: string): string {
  * Called from both the auto-update branch in `send` and from `edit`.
  */
 export function saveUndo(messageId: string, previousText: string, threadId?: string): void {
-  fs.mkdirSync(undoDir(), { recursive: true, mode: 0o700 });
   const record: UndoRecord = {
     messageId,
     threadId,
     previousText,
     savedAt: Date.now(),
   };
-  fs.writeFileSync(undoPathFor(messageId), JSON.stringify(record, null, 2) + '\n', { mode: 0o600 });
+  try {
+    fs.mkdirSync(undoDir(), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(undoPathFor(messageId), JSON.stringify(record, null, 2) + '\n', { mode: 0o600 });
+  } catch (error) {
+    // The edit has not happened yet. Without the saved text it could not be undone, so it stops here.
+    throw new ConfigError(
+      `Cannot save the message's current text for undo: ${fileErrorReason(error)}. The message was not changed.`,
+      `Undo folder: ${undoDir()}`,
+    );
+  }
   pruneUndo();
 }
 
