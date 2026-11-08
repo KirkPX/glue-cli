@@ -99,3 +99,25 @@ describe('number options', () => {
     expect(glue.calls).toHaveLength(0);
   });
 });
+
+describe('usage errors', () => {
+  it('a piped usage error is one JSON object on stderr', async () => {
+    const result = await run(['threads', '--last', 'many'], opts());
+    expect(result.code).toBeGreaterThan(0);
+    const body = JSON.parse(result.stderr.trim());
+    expect(body.error).toBe(true);
+    expect(body.message).toMatch(/invalid/i);
+    expect(body.hint).toMatch(/--help/);
+  });
+
+  it('an unknown command is JSON too', async () => {
+    const result = await run(['no-such-command', '--json'], opts());
+    expect(result.code).toBeGreaterThan(0);
+    expect(JSON.parse(result.stderr.trim()).message).toMatch(/no command called/i);
+  });
+
+  it('--pretty keeps the plain text', async () => {
+    const result = await run(['threads', '--last', 'many', '--pretty'], opts());
+    expect(result.stderr).toMatch(/^error: /);
+  });
+});

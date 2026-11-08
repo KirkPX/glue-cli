@@ -15,6 +15,19 @@ for (const stream of [process.stdout, process.stderr]) {
 
 const program = new Command();
 
+// Commander's own errors (a missing option, an unknown command, a bad number) follow the output
+// contract too: one JSON object on stderr when the output is JSON. This is set before any
+// subcommand is added, because each subcommand copies it when it is created.
+program.configureOutput({
+  outputError: (text, write) => {
+    const argv = process.argv;
+    const json = argv.includes('--json') || (!argv.includes('--pretty') && !process.stdout.isTTY);
+    if (!json) return write(text);
+    const message = text.replace(/^error: /, '').trim();
+    write(JSON.stringify({ error: true, message, hint: 'Run the command with --help to see its options.' }) + '\n');
+  },
+});
+
 program
   .name('glue')
   .description('Glue Groups CLI — messaging, threads, reactions, edits. Run `glue guide` for a full agent-oriented reference.')
@@ -35,7 +48,13 @@ program.hook('preAction', async () => {
 });
 
 // Running `glue` bare signs you in if you never have, and otherwise shows what you can do.
-program.action(async () => {
+// A word that is not a command lands here as an argument, so say that plainly instead of
+// Commander's "too many arguments".
+program.usage('[options] [command]').argument('[command]').action(async (word?: string) => {
+  if (word) {
+    const { UsageError } = await import('./errors.js');
+    throw new UsageError(`There is no command called "${word}".`, 'Run `glue --help` to see the commands.');
+  }
   const { isConfigured, loginCommand } = await import('./cli/commands/login.js');
   if (isConfigured()) {
     program.help();
