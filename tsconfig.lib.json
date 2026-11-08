@@ -1,0 +1,13 @@
+{
+  // The library's type declarations. tsup cannot write them with TypeScript 7, so tsc does,
+  // after tsup has cleaned and filled dist/.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/lib.ts"]
+}

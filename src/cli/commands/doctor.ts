@@ -30,7 +30,7 @@ export async function doctorCommand(
 ): Promise<void> {
   const pathCheck = commandOnPathCheck();
   const checks: CheckResult[] = [
-    { name: "Node.js", ok: majorVersion() >= 20, value: process.version },
+    { name: "Node.js", ok: isSupportedNode(), value: process.version },
     { name: "Platform", ok: true, value: `${process.platform}/${process.arch}` },
     pathCheck,
   ];
@@ -249,6 +249,11 @@ function findCommandOnPath(
   return null;
 }
 
-function majorVersion(): number {
-  return Number(process.version.replace(/^v/, "").split(".")[0]) || 0;
+
+/** The versions named by `engines` in package.json. The build tools need them. */
+export function isSupportedNode(version: string = process.version): boolean {
+  const [major = 0, minor = 0] = version.replace(/^v/, "").split(".").map(Number);
+  if (major === 22) return minor >= 18;
+  if (major === 24) return minor >= 11;
+  return major >= 26;
 }

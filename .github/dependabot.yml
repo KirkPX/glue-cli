@@ -9,8 +9,7 @@ updates:
         patterns: ["*"]
     ignore:
       # Every CLI in the fleet uses the same major version of each tool, so a
-      # major bump is made for all of them together, not by one repo's bot.
-      # TypeScript 7 is a known case: it fails the `tsup --dts` build.
+      # major update is made for all of them together, not by one repo's bot.
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions

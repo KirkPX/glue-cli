@@ -87,3 +87,17 @@ describe("commandOnPathCheck", () => {
     expect(result.value).toContain("shadowed");
   });
 });
+
+describe("doctor's Node check", () => {
+  it("matches the versions the package supports", async () => {
+    const { isSupportedNode } = await import("../src/cli/commands/doctor.js");
+    for (const good of ["v22.18.0", "v22.20.1", "v24.11.0", "v26.0.0", "v28.1.0"]) expect(isSupportedNode(good), good).toBe(true);
+    for (const bad of ["v20.19.0", "v22.17.9", "v23.11.0", "v24.10.0", "v25.9.0"]) expect(isSupportedNode(bad), bad).toBe(false);
+  });
+
+  it("agrees with engines in package.json", async () => {
+    const { readFileSync } = await import("node:fs");
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf-8"));
+    expect(pkg.engines.node).toBe("^22.18.0 || ^24.11.0 || >=26.0.0");
+  });
+});
