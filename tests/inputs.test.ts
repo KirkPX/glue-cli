@@ -134,3 +134,31 @@ describe('GraphQL refusals', () => {
     expect(body.hint).toMatch(/reason above/);
   });
 });
+
+describe('chat and thread filters', () => {
+  const chat = (n: number) => ({ node: { id: `thr_c${n}`, subject: `c${n}`, threadType: 'userChat', lastMessage: null } });
+  it('chats --last n returns n, the newest, though Glue answers with n + 1', async () => {
+    const server = new FakeGlue({
+      PersistentChats: (v) => ({
+        persistentChats: { totalCount: 9, edges: Array.from({ length: Number(v.last) + 1 }, (_, i) => chat(i)) },
+      }),
+    });
+    await server.start();
+    const result = await run(['chats', '--type', 'user', '--last', '3'], { home: home.home, apiUrl: server.url });
+    await server.stop();
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout).map((c: { id: string }) => c.id)).toEqual(['thr_c1', 'thr_c2', 'thr_c3']);
+    expect(server.calls[0].variables).toMatchObject({ chatType: 'user', last: 3 });
+  });
+
+  it.each([
+    ['chats', '--type', 'dm'],
+    ['chats', '--order', 'recent'],
+    ['threads', '--order', 'newest'],
+  ])('%s %s %s is refused before any request', async (...args) => {
+    const result = await run(args, opts());
+    expect(result.code).toBeGreaterThan(0);
+    expect(result.stderr).toMatch(/Allowed choices/);
+    expect(glue.calls).toHaveLength(0);
+  });
+});

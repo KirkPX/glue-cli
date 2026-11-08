@@ -9,7 +9,8 @@ export async function chatsCommand(opts: { type?: string; last?: string; order?:
   const chatType = (opts.type === 'user' ? 'user' : 'group') as 'group' | 'user';
   const last = parseInt(opts.last || '30', 10);
   const result = await client.getPersistentChats(chatType, last, opts.order || 'unread');
-  const nodes = (result.edges || []).map((e: any) => e.node);
+  // Glue answers `last: n` with n + 1 chats, so the newest n are kept here.
+  const nodes = (result.edges || []).map((e: any) => e.node).slice(-last);
 
   if (r.format === 'pretty') {
     r.line(`${chatType === 'user' ? 'Direct' : 'Group'} chats: ${result.totalCount}`);
