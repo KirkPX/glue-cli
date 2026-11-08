@@ -20,3 +20,7 @@ updates:
     groups:
       all:
         patterns: ["*"]
+    ignore:
+      # The fleet moves to a new major version of each action together.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
