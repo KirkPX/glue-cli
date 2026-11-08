@@ -4,21 +4,7 @@ import { validateConfig } from '../../config.js';
 import { reporter } from '../output.js';
 import { UsageError } from '../../errors.js';
 
-// glue remind <threadId> <when> | glue remind <threadId> --clear
-// <when> is an ISO timestamp (e.g. 2026-05-29T09:00:00Z) or a relative form like "2h", "30m", "1d".
-function parseWhen(when: string): string {
-  const rel = when.match(/^(\d+)\s*(m|min|h|hr|hour|d|day)s?$/i);
-  if (rel) {
-    const n = parseInt(rel[1], 10);
-    const unitMs = /^m/i.test(rel[2]) ? 60_000 : /^h/i.test(rel[2]) ? 3_600_000 : 86_400_000;
-    return new Date(Date.now() + n * unitMs).toISOString();
-  }
-  const d = new Date(when);
-  if (isNaN(d.getTime())) {
-    throw new UsageError(`could not parse reminder time: "${when}"`, 'Use an ISO timestamp (2026-05-29T09:00:00Z) or a relative form: 30m, 2h, 1d.');
-  }
-  return d.toISOString();
-}
+import { parseWhen } from '../parse.js';
 
 export async function remindCommand(threadId: string, when: string | undefined, opts: { dryRun?: boolean; readOnly?: boolean; json?: boolean; clear?: boolean; pretty?: boolean }) {
   const r = reporter(opts);
@@ -32,7 +18,11 @@ export async function remindCommand(threadId: string, when: string | undefined, 
   } else if (!when) {
     throw new UsageError('specify when to be reminded, or pass --clear', 'glue remind <thr_…> 2h  |  glue remind <thr_…> 2026-05-29T09:00:00Z  |  glue remind <thr_…> --clear');
   } else {
-    remindAt = parseWhen(when);
+    try {
+      remindAt = parseWhen(when);
+    } catch (error) {
+      throw new UsageError((error as Error).message, 'glue remind <thr_…> 2h  |  glue remind <thr_…> 2026-05-29T09:00Z  |  glue remind <thr_…> --clear');
+    }
   }
 
   if (reportDryRun(opts, r, remindAt ? `Would set a reminder on ${threadId} for ${remindAt}` : `Would clear the reminder on ${threadId}`)) return;
