@@ -51,10 +51,17 @@ Google account that Glue does not know is refused, and the message points to `--
 With a saved sign-in, plain `glue login` only shows it. Running `glue` with no arguments signs
 you in if you never have, and shows help otherwise.
 
-Signing in needs three values that you supply: the `firebase` block in the settings file, or the
-matching `GLUE_FIREBASE_` variables. They are not built in. See
-[docs/configuration.md](docs/configuration.md). Reactions, quote-replies and `watch` also need
-`streamKey`. `glue doctor` says whether each is set.
+Signing in needs three values that you supply. They are not built in. Set each one once:
+
+```bash
+glue config set firebase.webKey <value>
+glue config set firebase.authDomain <value>
+glue config set firebase.projectId <value>
+glue config set streamKey <value>     # reactions, quote-replies and watch need this one
+```
+
+The same lines work in PowerShell. The matching `GLUE_FIREBASE_` and `GLUE_STREAM_KEY` variables
+work too. See [docs/configuration.md](docs/configuration.md). `glue doctor` says whether each is set.
 
 For CI and agents, where no keychain exists, set the token in the environment. It overrides a
 saved sign-in:
@@ -77,8 +84,10 @@ Highest wins:
 4. Built-in defaults
 
 ```bash
-glue config path    # where the settings file lives
-glue config show    # check the file and print it
+glue config path                 # where the settings file lives
+glue config show                 # check the file and print it
+glue config set readOnly true    # change one setting
+glue config unset readOnly       # remove it
 ```
 
 See [docs/configuration.md](docs/configuration.md) and [examples/config.json](examples/config.json).
@@ -169,7 +178,7 @@ Full agent-oriented reference with flags, gotchas, and patterns: **`glue guide`*
 | `glue tone` | Print your tone file (`tone.md` in the settings folder), to read before drafting |
 | `glue login [--status\|--refresh\|--force\|--email\|--paste]` / `glue logout` / `glue me` | Sign-in & identity |
 | `glue doctor` | Check the install, settings file and sign-in |
-| `glue config path\|show` / `glue auth` | Settings file / saved sign-in |
+| `glue config path\|show\|set\|unset` / `glue auth` | Settings file / saved sign-in |
 
 ### Name resolution & the directory
 

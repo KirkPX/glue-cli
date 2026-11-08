@@ -113,6 +113,19 @@ export class InterruptedError extends Error {
   }
 }
 
+/** A file system failure in plain words, for a message that also names the file. */
+export function fileErrorReason(err: unknown): string {
+  const code = (err as NodeJS.ErrnoException)?.code;
+  if (code === 'ENOENT') return 'the file or its folder does not exist';
+  if (code === 'EISDIR') return 'it is a folder, not a file';
+  // Windows reports a file in the way of a folder as EEXIST when making the folder.
+  if (code === 'ENOTDIR' || code === 'EEXIST') return 'part of the path is a file, not a folder';
+  if (code === 'EACCES' || code === 'EPERM') return 'you do not have permission';
+  if (code === 'EROFS') return 'the disk is read-only';
+  if (code === 'ENOSPC') return 'the disk is full';
+  return code ?? (err instanceof Error ? err.message : 'unknown error');
+}
+
 /** Mask the middle of a secret, keeping a few edge characters to identify it. */
 export function redact(value: string, show = 4): string {
   if (value.length <= show + 4) return '****';

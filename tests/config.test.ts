@@ -138,3 +138,48 @@ describe('settings file', () => {
     await server.stop();
   });
 });
+
+describe('config set and unset', () => {
+  const file = () => path.join(home.configDir, 'config.json');
+  const settings = () => JSON.parse(readFileSync(file(), 'utf8'));
+
+  it('sets values with the right type, including dotted names', async () => {
+    writeFileSync(file(), JSON.stringify({ timeoutMs: 5000 }));
+    expect((await run(['config', 'set', 'readOnly', 'true'], { home: home.home })).code).toBe(0);
+    expect((await run(['config', 'set', 'timeoutMs', '9000'], { home: home.home })).code).toBe(0);
+    expect((await run(['config', 'set', 'firebase.projectId', 'p1'], { home: home.home })).code).toBe(0);
+    expect(settings()).toEqual({ timeoutMs: 9000, readOnly: true, firebase: { projectId: 'p1' } });
+  });
+
+  it('unset removes a value, and the object it leaves empty', async () => {
+    writeFileSync(file(), JSON.stringify({ readOnly: true, firebase: { projectId: 'p1' } }));
+    const result = await run(['config', 'unset', 'firebase.projectId'], { home: home.home });
+    expect(JSON.parse(result.stdout).removed).toBe(true);
+    expect(settings()).toEqual({ readOnly: true });
+    const again = await run(['config', 'unset', 'firebase.projectId'], { home: home.home });
+    expect(JSON.parse(again.stdout).removed).toBe(false);
+  });
+
+  it.each([
+    [['readOnly', 'yes'], /true or false/],
+    [['timeoutMs', '1.5'], /whole number/],
+    [['timeoutMs', '9999999'], /Invalid settings/],
+    [['baseUrl', 'not a url'], /Invalid settings/],
+    [['readonly', 'true'], /no setting called/],
+    [['firebase.__proto__', 'x'], /no setting called/],
+    [['refreshToken', 'abc'], /tokens never go in the settings file/],
+  ])('refuses %j and leaves the file alone', async (args, reason) => {
+    writeFileSync(file(), JSON.stringify({ timeoutMs: 5000 }));
+    const result = await run(['config', 'set', ...args], { home: home.home });
+    expect(result.code).toBe(1);
+    expect(JSON.parse(result.stderr).message).toMatch(reason);
+    expect(settings()).toEqual({ timeoutMs: 5000 });
+  });
+
+  it('refuses to change a damaged file', async () => {
+    writeFileSync(file(), '{ not json');
+    const result = await run(['config', 'set', 'readOnly', 'true'], { home: home.home });
+    expect(result.code).toBe(1);
+    expect(readFileSync(file(), 'utf8')).toBe('{ not json');
+  });
+});
