@@ -40,14 +40,22 @@ The file never holds a token.
 ## Sign-in settings
 
 `glue login` and token renewal need the three `firebase` values. The CLI has no built-in values, so
-you supply them, in the settings file or as `GLUE_FIREBASE_API_KEY`, `GLUE_FIREBASE_AUTH_DOMAIN` and
+you supply them with `glue config set firebase.<name> <value>`, or as `GLUE_FIREBASE_API_KEY`, `GLUE_FIREBASE_AUTH_DOMAIN` and
 `GLUE_FIREBASE_PROJECT_ID`. A sign-in from an earlier version keeps any values it had saved.
 
 ## Chat setting
 
 Reactions, quote-replies, `watch`, `thread-activity` and `rename-audit` go through the chat service,
-and need its key. The CLI has none built in, so you supply it, as `streamKey` in the settings file or
+and need its key. The CLI has none built in, so you supply it with `glue config set streamKey <value>`, or
 as `GLUE_STREAM_KEY`. Without it, those commands fail and say so. Other commands still work.
+
+## Changing a setting
+
+`glue config set <name> <value>` changes one setting, and `glue config unset <name>` removes it.
+A dotted name reaches inside `firebase`, as in `glue config set firebase.projectId <value>`.
+`true` and `false` become booleans, and whole numbers become numbers. The whole file is checked
+before it is saved, so a bad value or an unknown name never reaches the disk. Tokens are refused:
+they belong to `glue login`.
 
 ## Validation
 

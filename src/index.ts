@@ -104,7 +104,7 @@ program
     await authCommand({ ...program.opts(), ...opts });
   });
 
-const configCmd = program.command('config').description('Inspect the settings file');
+const configCmd = program.command('config').description('Inspect and change the settings file');
 
 configCmd
   .command('path')
@@ -120,6 +120,22 @@ configCmd
   .action(async (opts) => {
     const { configShow } = await import('./cli/commands/config.js');
     await configShow({ ...program.opts(), ...opts });
+  });
+
+configCmd
+  .command('set <name> <value>')
+  .description('Set one setting, for example `config set readOnly true` or `config set firebase.projectId <value>`')
+  .action(async (name: string, value: string, opts) => {
+    const { configSet } = await import('./cli/commands/config.js');
+    await configSet(name, value, { ...program.opts(), ...opts });
+  });
+
+configCmd
+  .command('unset <name>')
+  .description('Remove one setting')
+  .action(async (name: string, opts) => {
+    const { configUnset } = await import('./cli/commands/config.js');
+    await configUnset(name, { ...program.opts(), ...opts });
   });
 
 program
