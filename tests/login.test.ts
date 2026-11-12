@@ -4,7 +4,7 @@ import type { AddressInfo } from 'net';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { findOpener, openBrowser } from '../src/login/browser.js';
+import { findOpener, openBrowser, openerArgument } from '../src/login/browser.js';
 import { FIREBASE_VERSION, loginPage } from '../src/login/page.js';
 import { runBrowserLogin } from '../src/login/server.js';
 import { ENTRY, run, tempHome } from './helpers/cli.js';
@@ -41,6 +41,20 @@ describe('findOpener', () => {
   });
 });
 
+describe('openerArgument', () => {
+  const url = 'http://127.0.0.1:5000/?nonce=a&site=b';
+
+  it("escapes cmd's special characters on Windows, so the whole URL reaches the browser", () => {
+    expect(openerArgument(url, 'win32')).toBe('http://127.0.0.1:5000/?nonce=a^&site=b');
+    expect(openerArgument('a|b<c>d^e', 'win32')).toBe('a^|b^<c^>d^^e');
+  });
+
+  it('leaves the URL alone elsewhere', () => {
+    expect(openerArgument(url, 'darwin')).toBe(url);
+    expect(openerArgument(url, 'linux')).toBe(url);
+  });
+});
+
 describe('openBrowser', () => {
   it('launches nothing when the no-browser guard is set', () => {
     expect(openBrowser('http://127.0.0.1:9/never')).toBe(false);
@@ -71,6 +85,17 @@ describe('runBrowserLogin', () => {
     const accept = vi.fn().mockResolvedValue({ ok: true });
     const { pending, base, nonce } = await drive(accept);
     expect((await post(base, { credential: 'attacker', nonce: 'wrong' })).status).toBe(403);
+    expect(accept).not.toHaveBeenCalled();
+    expect((await post(base, { credential: 'c', nonce })).status).toBe(200);
+    await pending;
+  });
+
+  it('answers 400 to a body that is valid JSON but not an object, and keeps listening', async () => {
+    const accept = vi.fn().mockResolvedValue({ ok: true });
+    const { pending, base, nonce } = await drive(accept);
+    for (const body of [null, 7, ['x']]) {
+      expect((await post(base, body)).status).toBe(400);
+    }
     expect(accept).not.toHaveBeenCalled();
     expect((await post(base, { credential: 'c', nonce })).status).toBe(200);
     await pending;

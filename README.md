@@ -97,7 +97,7 @@ See [docs/configuration.md](docs/configuration.md) and [examples/config.json](ex
 ```bash
 glue me            # readable at a terminal
 glue me --json     # JSON
-glue me | cat      # JSON when piped, with no flag
+glue me > me.json  # JSON when sent to a file or another program, with no flag
 ```
 
 ## Output

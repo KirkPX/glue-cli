@@ -31,7 +31,7 @@ program.configureOutput({
 program
   .name('glue')
   .description('Glue Groups CLI — messaging, threads, reactions, edits. Run `glue guide` for a full agent-oriented reference.')
-  .version('2.2.1')
+  .version('2.2.2')
   .option('--json', 'Print JSON, even at a terminal')
   .addOption(new Option('--pretty', 'Print readable text, even in a pipe').hideHelp())
   .option('--read-only', 'Refuse any command that would change data')
