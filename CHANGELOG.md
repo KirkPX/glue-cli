@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.1
+
+### Dependencies
+
+- `@apollo/client` 4.3.7 and `stream-chat` 9.55.0, both small fixes. Nothing changes in how
+  the CLI behaves.
+
 ## 2.2.0
 
 ### Changes that can break a script
