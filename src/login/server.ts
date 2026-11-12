@@ -72,6 +72,12 @@ export async function runBrowserLogin<T>(opts: BrowserLoginOptions<T>): Promise<
           return;
         }
 
+        // A body of `null`, a number or a list is valid JSON but not a sign-in.
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+          respond(res, 400, { error: "Could not read that request." });
+          return;
+        }
+
         if (payload.nonce !== nonce) {
           respond(res, 403, {
             error: "This login page has expired. Run `glue login` again.",

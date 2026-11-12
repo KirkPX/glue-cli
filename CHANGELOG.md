@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.2
+
+### Fixes
+
+- On Windows, `glue login` opens the sign-in page with its whole address. Before, the browser
+  lost everything after the first `&`.
+- The sign-in page answers 400 to a request whose body is `null`, a number or a list, and keeps
+  waiting for the real sign-in. Before, such a request stopped the sign-in.
+- The README example that saves JSON works in PowerShell too.
+
 ## 2.2.1
 
 ### Dependencies
