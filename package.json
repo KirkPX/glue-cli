@@ -41,12 +41,12 @@
   },
   "type": "module",
   "dependencies": {
-    "@apollo/client": "^4.3.6",
+    "@apollo/client": "^4.3.7",
     "@napi-rs/keyring": "^2.1.2",
     "commander": "^15.1.0",
     "graphql": "^16.15.0",
     "picocolors": "^1.1.1",
-    "stream-chat": "^9.54.4",
+    "stream-chat": "^9.55.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
