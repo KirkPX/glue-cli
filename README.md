@@ -173,7 +173,7 @@ Full agent-oriented reference with flags, gotchas, and patterns: **`glue guide`*
 | Command | Description |
 |---------|-------------|
 | `glue group-create/delete/update/members/add/remove/join/leave` | Group management |
-| `glue thread-add/remove/close/reopen/update`, `glue delete-thread` | Thread management |
+| `glue thread-add/remove/close/reopen/update`, `glue delete-thread` | Thread management. `thread-update --public` lets everyone in the workspace open a thread |
 | `glue delete-message <id>` | Delete a message |
 | `glue tone` | Print your tone file (`tone.md` in the settings folder), to read before drafting |
 | `glue login [--status\|--refresh\|--force\|--email\|--paste]` / `glue logout` / `glue me` | Sign-in & identity |

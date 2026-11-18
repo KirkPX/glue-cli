@@ -197,6 +197,8 @@ glue group-members "<group>" --pretty
 glue thread-add <id> "<name>"
 glue thread-close <id>
 glue thread-update <id> --subject "<new>"
+glue thread-update <id> --public               # everyone in the workspace can open it; --private undoes it
+glue group-update "<group>" --joinable workspace  # who can join: workspace (Open) or approval (Ask to join)
 glue delete-message <id> --yes
 glue pin <messageId> / glue unpin <messageId>
 ```

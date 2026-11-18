@@ -5,6 +5,7 @@ import { validateConfig } from '../../config.js';
 import { reporter } from '../output.js';
 import { confirmText } from '../confirm-text.js';
 import { saveUndo } from '../undo.js';
+import { assertGlueLinks } from '../glue-links.js';
 
 export async function editCommand(messageId: string, textArg: string | undefined, opts: {
   textFile?: string;
@@ -17,6 +18,7 @@ export async function editCommand(messageId: string, textArg: string | undefined
   const r = reporter(opts);
   assertWritable(opts);
   const text = await messageText(textArg, opts);
+  assertGlueLinks(text);
   validateConfig();
   const client = new GlueAPIClient();
 
@@ -25,6 +27,7 @@ export async function editCommand(messageId: string, textArg: string | undefined
     r.warn('Edit cancelled.');
     return;
   }
+  assertGlueLinks(finalText);
 
   if (reportDryRun(opts, r, `Would replace message ${messageId}: ${finalText}`)) return;
 

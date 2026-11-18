@@ -31,7 +31,7 @@ program.configureOutput({
 program
   .name('glue')
   .description('Glue Groups CLI — messaging, threads, reactions, edits. Run `glue guide` for a full agent-oriented reference.')
-  .version('2.2.2')
+  .version('2.3.0')
   .option('--json', 'Print JSON, even at a terminal')
   .addOption(new Option('--pretty', 'Print readable text, even in a pipe').hideHelp())
   .option('--read-only', 'Refuse any command that would change data')
@@ -281,6 +281,8 @@ program
   ].join('\n'))
   .option('--to <names...>', 'Recipients for the new thread (default: inherit parent thread). Person names; pass grp_… IDs for groups.')
   .option('--subject <subject>', 'Subject for the new thread (default: server-derived from the text)')
+  .option('--public', 'Start it public: everyone in the workspace can open it. A subthread of a public thread is public already.')
+  .option('--private', 'Start it private, even inside a public thread')
   .option('-y, --yes', 'Send without asking')
   .action(async (anchorId, text, opts) => {
     const { subthreadCommand } = await import('./cli/commands/subthread.js');
@@ -321,6 +323,7 @@ program
   .option('--thread <id>', 'Reply to an existing thread or DM')
   .option('--to <names...>', 'Start new thread with recipient(s) by name (never posts to a DM; see `glue guide`)')
   .option('--subject <subject>', 'Subject for new thread (used with --to)')
+  .option('--public', 'Start the new thread public: everyone in the workspace can open it (used with --to)')
   .option('--chat', 'Allow posting a loose message into a group\'s main chat timeline (bypasses the groupChat guard)')
   .option('--attach <files...>', 'Attach file(s) by path')
   .option('-y, --yes', 'Send without asking')
@@ -402,8 +405,8 @@ program
   .option('--dry-run', 'Report what would change, and change nothing')
   .description('Update a thread')
   .option('--subject <subject>', 'New thread subject')
-  .option('--public', 'Make the thread public')
-  .option('--private', 'Make the thread private')
+  .option('--public', 'Make the thread public: add the workspace, so everyone in it can open the thread and links to its messages. Nobody gets it in their inbox.')
+  .option('--private', 'Make the thread private: remove the workspace, so only its recipients can open it')
   .action(async (id, opts) => {
     const { threadUpdateCommand } = await import('./cli/commands/thread-update.js');
     await threadUpdateCommand(id, { ...program.opts(), ...opts });
@@ -434,8 +437,9 @@ program
   .option('--dry-run', 'Report what would change, and change nothing')
   .description('Update a group')
   .option('--name <name>', 'New group name')
-  .option('--public', 'Make the group public')
-  .option('--private', 'Make the group private')
+  .option('--joinable <who>', 'Who can join: workspace (Open), approval (Ask to join), domain or none')
+  .option('--public', 'Same as --joinable workspace: anyone in the workspace can join')
+  .option('--private', 'Same as --joinable approval: people ask to join')
   .action(async (nameOrId, opts) => {
     const { groupUpdateCommand } = await import('./cli/commands/group-update.js');
     await groupUpdateCommand(nameOrId, { ...program.opts(), ...opts });

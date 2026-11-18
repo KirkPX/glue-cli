@@ -24,6 +24,7 @@ export async function groupsCommand(opts: { pretty?: boolean }) {
     for (const g of groups) {
       const parts = [`  ${g.name} (${g.id})`];
       if ((g as any).memberCount) parts.push(`— ${(g as any).memberCount} members`);
+      if ((g as any).joinableBy) parts.push(`— joinable by ${(g as any).joinableBy}`);
       r.line(parts.join(' '));
       if ((g as any).description) r.line(`    ${(g as any).description}`);
     }

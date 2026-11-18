@@ -11,6 +11,8 @@ export async function threadAddCommand(threadId: string, names: string[], opts: 
   validateConfig();
   const client = new GlueAPIClient();
 
+  // A wks_ ID passes through and goes in with the 'activity' subscription (see
+  // addThreadRecipients), which makes the thread public without filling every inbox.
   const ids = await Promise.all(names.map(n => resolveRecipientOrGroup(client, n)));
   const result = await client.addThreadRecipients(threadId, ids);
 
@@ -19,7 +21,7 @@ export async function threadAddCommand(threadId: string, names: string[], opts: 
     r.line(`Added to thread: ${result.subject || result.id}`);
     r.line(`Recipients (${result.recipients.totalCount}):`);
     for (const item of recipients) {
-      const label = item.id.startsWith('grp_') ? `[${item.name}]` : item.name;
+      const label = item.id.startsWith('grp_') || item.id.startsWith('wks_') ? `[${item.name}]` : item.name;
       r.line(`  ${label} (${item.id})`);
     }
   } else {

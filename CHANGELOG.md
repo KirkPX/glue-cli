@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.3.0
+
+### New
+
+- `glue thread-update <id> --public` lets everyone in the workspace open the thread, and links
+  to its messages. It adds the workspace as a recipient, the way the Glue web app does.
+  Nobody gets the thread in their inbox. `--private` removes the workspace again. Both take
+  `--dry-run`, and both say so when the thread is already that way.
+- `glue send --to … --public` starts a new thread public. A `wks_…` ID in `--to` does the same.
+- `glue subthread` passes a public parent's visibility on to the new subthread or branch.
+  `--public` and `--private` override it.
+- `glue thread-add` takes the workspace ID (`wks_…`).
+- `glue group-update --joinable workspace|approval|domain|none` sets who can join a group.
+  `--public` is short for `workspace` (Open) and `--private` for `approval` (Ask to join).
+- `glue groups` shows `joinableBy`, and `glue thread` shows `visibility` and `publicTo`.
+- `send`, `edit` and `subthread` refuse a Glue link with a backslash before an underscore
+  (`thr\_…` or `thr%5C_…`), because it does not open. The message shows the corrected link.
+
+### Fixes
+
+- `group-update --public` and `--private` failed: they sent a field Glue does not have. They
+  now set `joinableBy`, and the command checks that Glue saved it.
+- `thread-update --public` and `--private` failed for the same reason.
+- A branch off a public thread passed the workspace to Glue with no subscription. The
+  workspace now always goes in with the `activity` subscription, as the web app sends it.
+
 ## 2.2.2
 
 ### Fixes

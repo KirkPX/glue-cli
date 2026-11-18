@@ -2,6 +2,7 @@ import { GlueAPIClient } from '../../client-graphql.js';
 import { validateConfig } from '../../config.js';
 import { reporter } from '../output.js';
 import { idFrom } from '../resolve.js';
+import { isWorkspaceId, threadVisibility } from '../../visibility.js';
 
 export async function threadCommand(idOrLink: string, opts: { limit?: string; oldest?: boolean; pretty?: boolean }) {
   const r = reporter(opts);
@@ -15,6 +16,7 @@ export async function threadCommand(idOrLink: string, opts: { limit?: string; ol
   const thread = await client.getThread(id, limit, { direction });
 
   const recipients = thread.recipients?.edges?.map((e: any) => e.node) || [];
+  const visibility = threadVisibility(recipients);
   // Display chronologically (oldest first, newest at the bottom) regardless of
   // which end we fetched.
   const sorted = thread.messages.edges
@@ -25,7 +27,7 @@ export async function threadCommand(idOrLink: string, opts: { limit?: string; ol
 
   if (r.format === 'pretty') {
     const recipientNames = recipients.map((r: any) =>
-      r.id.startsWith('grp_') ? `[${r.name}]` : r.name
+      r.id.startsWith('grp_') || isWorkspaceId(r.id) ? `[${r.name}]` : r.name
     );
     r.line(`Thread: ${thread.subject || '(No subject)'} (${thread.id})`);
     if (thread.threadType) r.line(`Type: ${thread.threadType}`);
@@ -38,6 +40,9 @@ export async function threadCommand(idOrLink: string, opts: { limit?: string; ol
       r.line(`Subthread of: ${p.subject || '(No subject)'} (${p.id})`);
     }
     r.line(`Recipients: ${recipientNames.join(', ') || 'none'}`);
+    r.line(visibility.publicTo
+      ? `Visibility: public (everyone in ${visibility.publicTo.name} can open it)`
+      : 'Visibility: private (only its recipients can open it)');
     r.line(`Messages: ${messages.length}`);
     r.line('---');
     for (const m of messages) {
@@ -61,6 +66,7 @@ export async function threadCommand(idOrLink: string, opts: { limit?: string; ol
       threadType: thread.threadType,
       parentThread: thread.parentThread ?? null,
       replyToMessage: thread.replyToMessage ?? null,
+      ...visibility,
       recipients,
       messages,
     });
