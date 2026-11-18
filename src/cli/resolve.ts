@@ -2,6 +2,17 @@ import { UsageError } from '../errors.js';
 import { GlueAPIClient } from '../client-graphql.js';
 import { getCache } from '../services/cache.js';
 
+const isRecipientId = (value: string) => /^(usr|grp|wks)_/.test(value);
+
+/**
+ * Splits --to values into the workspace (wks_…) and everyone else. Naming the workspace is the
+ * same as --public: the caller adds it with the 'activity' subscription, never as an inbox.
+ */
+export function splitWorkspace(names: string[] = []): { workspace: boolean; others: string[] } {
+  const others = names.filter((n) => !n.startsWith('wks_'));
+  return { workspace: others.length < names.length, others };
+}
+
 /** Takes an ID, or a pasted Glue link that holds one. */
 export function idFrom(value: string, prefix: 'thr' | 'msg'): string {
   if (!value.includes('://')) return value;
@@ -12,8 +23,9 @@ export function idFrom(value: string, prefix: 'thr' | 'msg'): string {
 
 // Resolve a name to a user/group ID. Exits on no match or ambiguous match.
 export async function resolveRecipient(client: GlueAPIClient, name: string): Promise<string> {
-  // If it already looks like an ID, pass through
-  if (name.startsWith('usr_') || name.startsWith('grp_')) {
+  // If it already looks like an ID, pass through. A wks_ ID is the workspace: as a recipient it
+  // makes the thread public.
+  if (isRecipientId(name)) {
     return name;
   }
 
@@ -40,7 +52,7 @@ export async function resolveRecipient(client: GlueAPIClient, name: string): Pro
 
 // Resolve a name to a user or group ID. Tries users first, then groups.
 export async function resolveRecipientOrGroup(client: GlueAPIClient, name: string): Promise<string> {
-  if (name.startsWith('usr_') || name.startsWith('grp_')) {
+  if (isRecipientId(name)) {
     return name;
   }
 

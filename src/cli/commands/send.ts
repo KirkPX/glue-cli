@@ -7,7 +7,8 @@ import { validateConfig } from '../../config.js';
 import { reporter } from '../output.js';
 import { confirmText } from '../confirm-text.js';
 import { shouldUpdate, saveLastSent, DedupeMatch } from '../last-sent.js';
-import { idFrom, resolveRecipient } from '../resolve.js';
+import { idFrom, resolveRecipient, splitWorkspace } from '../resolve.js';
+import { assertGlueLinks } from '../glue-links.js';
 import { similarityRatio, SIMILARITY_THRESHOLD } from '../similarity.js';
 import { saveUndo } from '../undo.js';
 import { UsageError } from '../../errors.js';
@@ -65,10 +66,12 @@ export async function sendCommand(textArg: string | undefined, opts: {
   new?: boolean;
   update?: boolean;
   chat?: boolean;
+  public?: boolean;
 }) {
   const r = reporter(opts);
   assertWritable(opts);
   const text = await messageText(textArg, opts);
+  assertGlueLinks(text);
   validateConfig();
   const client = new GlueAPIClient();
 
@@ -79,6 +82,18 @@ export async function sendCommand(textArg: string | undefined, opts: {
 
   if (opts.new && opts.update) {
     throw new UsageError('--new and --update are mutually exclusive');
+  }
+
+  // --public, or the workspace (wks_…) in --to, starts the thread public: everyone in the
+  // workspace can open it. The workspace goes in after the send, with the 'activity'
+  // subscription, so the thread does not land in every inbox.
+  const split = splitWorkspace(opts.to);
+  const makePublic = !!opts.public || split.workspace;
+  if (makePublic && opts.thread) {
+    throw new UsageError('--public starts a new thread, and --thread replies to one that exists.', `To make that thread public, run: glue thread-update ${idFrom(opts.thread, 'thr')} --public`);
+  }
+  if (makePublic && split.others.length === 0) {
+    throw new UsageError('A public thread needs at least one person or group in --to, as well as the workspace.');
   }
 
   // Guard: never post a loose chat message into a group's main timeline.
@@ -119,11 +134,12 @@ export async function sendCommand(textArg: string | undefined, opts: {
     r.warn('Message cancelled.');
     return;
   }
+  assertGlueLinks(finalText);
 
   // Resolve --to names to user IDs
   let recipientIds: string[] | undefined;
-  if (opts.to && opts.to.length > 0) {
-    recipientIds = await Promise.all(opts.to.map(n => resolveRecipient(client, n)));
+  if (split.others.length > 0) {
+    recipientIds = await Promise.all(split.others.map(n => resolveRecipient(client, n)));
   }
 
   // Dedupe decision: --new bypasses entirely; otherwise look up the candidate.
@@ -147,7 +163,9 @@ export async function sendCommand(textArg: string | undefined, opts: {
     }
   }
 
-  const destination = opts.thread ? `thread ${opts.thread}` : `new thread to ${opts.to!.join(', ')}`;
+  const destination = opts.thread
+    ? `thread ${opts.thread}`
+    : `new ${makePublic ? 'public ' : ''}thread to ${split.others.join(', ')}${makePublic ? ' (everyone in the workspace can open it)' : ''}`;
   if (reportDryRun(
     opts,
     r,
@@ -201,6 +219,8 @@ export async function sendCommand(textArg: string | undefined, opts: {
     // Track this send for potential update
     saveLastSent(response.message.id, response.thread.id, recipientIds, finalText);
 
+    if (makePublic) await makeNewThreadPublic(client, response.thread.id);
+
     if (r.format === 'pretty') {
       const msg = response.message;
       r.line(`Sent to thread: ${response.thread.subject || '(No subject)'} (${response.thread.id})`);
@@ -209,5 +229,19 @@ export async function sendCommand(textArg: string | undefined, opts: {
     } else {
       r.result(response);
     }
+  }
+}
+
+/** Adds the workspace to a thread this command just started. The message is already sent. */
+export async function makeNewThreadPublic(client: GlueAPIClient, threadId: string): Promise<void> {
+  try {
+    const workspace = await client.getWorkspace();
+    await client.addThreadRecipients(threadId, [{ recipient: workspace.id, subscription: 'activity' }]);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new UsageError(
+      `The message was sent, but thread ${threadId} is still private: ${reason}`,
+      `Make it public with: glue thread-update ${threadId} --public`,
+    );
   }
 }

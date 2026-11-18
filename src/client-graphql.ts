@@ -7,6 +7,7 @@ import { config, signInHint } from './config.js';
 import { ApiError, UsageError } from './errors.js';
 import { TRANSFER_TIMEOUT_MS, request, extractSafeDetail, type RetryMode } from './client.js';
 import { TokenRefreshService } from './services/token-refresh.js';
+import { toRecipientRole, type JoinableBy, type RecipientRole } from './visibility.js';
 import type {
   GlueMessage,
   SendMessageResponse,
@@ -210,6 +211,7 @@ export class GlueAPIClient {
               recipients(first: 50) {
                 edges {
                   node { id name }
+                  subscription
                 }
                 totalCount
               }
@@ -514,6 +516,7 @@ export class GlueAPIClient {
                 name
                 description
                 memberCount
+                joinableBy
               }
             }
             pageInfo {
@@ -671,8 +674,10 @@ export class GlueAPIClient {
     return data!.workspace.groups;
   }
 
-  // Add recipients to a thread
-  async addThreadRecipients(threadId: string, recipientIds: string[]) {
+  // Add recipients to a thread. A plain ID gets the server's default subscription. Pass
+  // { recipient, subscription } to choose one: the workspace always goes in as 'activity',
+  // so a public thread does not land in every inbox in the workspace.
+  async addThreadRecipients(threadId: string, recipients: Array<string | RecipientRole>) {
     const { data } = await this.client.mutate<any>({
       mutation: gql`
         mutation AddThreadRecipients($id: ID!, $recipients: [RecipientRoleInput!]!) {
@@ -688,10 +693,25 @@ export class GlueAPIClient {
       `,
       variables: {
         id: threadId,
-        recipients: recipientIds.map(id => ({ recipient: id })),
+        recipients: recipients.map(toRecipientRole),
       },
     });
     return data!.addThreadRecipients;
+  }
+
+  // The workspace this sign-in works in. Adding it to a thread makes the thread public.
+  async getWorkspace(): Promise<{ id: string; name: string }> {
+    const { data } = await this.client.query<any>({
+      query: gql`
+        query Workspace {
+          workspace { id name }
+        }
+      `,
+    });
+    if (!data?.workspace?.id) {
+      throw new UsageError('Glue did not say which workspace this sign-in belongs to.', 'Run glue doctor to check the sign-in.');
+    }
+    return { id: data.workspace.id, name: data.workspace.name };
   }
 
   // Remove recipients from a thread
@@ -714,8 +734,9 @@ export class GlueAPIClient {
     return data!.removeThreadRecipients;
   }
 
-  // Update a thread (subject, recipients, visibility)
-  async updateThread(threadId: string, input: { subject?: string; recipients?: string[]; isPublic?: boolean }) {
+  // Update a thread's subject or recipients. Visibility is the workspace recipient: see
+  // makeThreadPublic and makeThreadPrivate.
+  async updateThread(threadId: string, input: { subject?: string; recipients?: string[] }) {
     const { data } = await this.client.mutate<any>({
       mutation: gql`
         mutation UpdateThread($id: ID!, $input: UpdateThreadInput!) {
@@ -882,13 +903,31 @@ export class GlueAPIClient {
   }
 
   // Update a group
-  async updateGroup(groupId: string, input: { name?: string; isPublic?: boolean }) {
+  // Glue ignores joinableBy unless the input also names the group's workspace, so this
+  // looks the workspace up when the caller did not give it.
+  async updateGroup(groupId: string, input: { name?: string; joinableBy?: JoinableBy; workspaceID?: string }) {
+    if (input.joinableBy && !input.workspaceID) {
+      const { data: group } = await this.client.query<any>({
+        query: gql`
+          query GroupWorkspace($id: ID!) {
+            node(id: $id) { ... on Group { id workspaceID } }
+          }
+        `,
+        variables: { id: groupId },
+      });
+      const workspaceID = group?.node?.workspaceID;
+      if (!workspaceID) {
+        throw new UsageError(`group not found: ${groupId}`, 'Find the group ID with: glue groups');
+      }
+      input = { ...input, workspaceID };
+    }
     const { data } = await this.client.mutate<any>({
       mutation: gql`
         mutation UpdateGroup($id: ID!, $input: UpdateGroupInput!) {
           updateGroup(id: $id, input: $input) {
             id
             name
+            joinableBy
           }
         }
       `,

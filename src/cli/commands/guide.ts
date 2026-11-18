@@ -138,7 +138,8 @@ glue directory --pretty                      # Browse the local people/group ind
 glue directory --refresh                     # Pull the full current group list into the index
 glue group-create "<name>"
 glue group-delete "<nameOrId>" --yes
-glue group-update "<nameOrId>" --name "new-name" --public
+glue group-update "<nameOrId>" --name "new-name"
+glue group-update "<nameOrId>" --joinable workspace   # Who can join: workspace (Open), approval (Ask to join), domain, none. --public = workspace, --private = approval
 glue group-members "<nameOrId>" --pretty
 glue group-add "<group>" "<name>" [names...]
 glue group-remove "<group>" "<name>"
@@ -149,13 +150,24 @@ glue group-leave "<nameOrId>"
 ## Thread Management
 
 \`\`\`
-glue thread-add <id> "<name>" [names...]     # Add recipients
+glue thread-add <id> "<name>" [names...]     # Add recipients (names, usr_/grp_ IDs, or the wks_ workspace ID)
 glue thread-remove <id> "<name>"
 glue thread-close <id> --yes
 glue thread-reopen <id>
-glue thread-update <id> --subject "<subj>" [--public|--private]
+glue thread-update <id> --subject "<subj>"
+glue thread-update <id> --public             # Everyone in the workspace can open it. --private undoes it. Takes --dry-run
 glue delete-thread <id> --yes                 # Deletes the thread. Needs --yes in a script
 \`\`\`
+
+**Public threads and open groups.** These are two different settings.
+
+- A **thread is public** when its workspace (\`wks_…\`) is one of its recipients. Everyone in the workspace can then open the thread, and a link to one of its messages, without being in the thread's group. Nobody gets it in their inbox: the workspace always goes in with the \`activity\` subscription. \`glue thread <id>\` shows \`visibility\` (\`public\` or \`private\`) and \`publicTo\`.
+  - Existing thread: \`glue thread-update <id> --public\` (or \`--private\`).
+  - New thread: \`glue send "<text>" --to <grp_…> --subject "<subj>" --public\`. Putting the \`wks_…\` ID in \`--to\` does the same.
+  - Subthread or branch: a public parent gives a public child. \`--public\` or \`--private\` on \`glue subthread\` overrides it.
+- A **group's joinableBy** says who can join the group: \`workspace\` (Open), \`approval\` (Ask to join), \`domain\` or \`none\`. \`glue groups\` shows it. Only a group admin can change it.
+
+**Glue links:** \`https://app.glue.ai/thr_…/msg_…\`. A link with a backslash before an underscore (\`thr\\_…\` or \`thr%5C_…\`) does not open, so \`send\`, \`edit\` and \`subthread\` refuse it and print the corrected link.
 
 ## Tone
 
