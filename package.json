@@ -41,7 +41,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@apollo/client": "^4.3.7",
+    "@apollo/client": "^4.3.8",
     "@napi-rs/keyring": "^2.1.2",
     "commander": "^15.1.0",
     "graphql": "^16.15.0",
@@ -54,7 +54,7 @@
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vite": "^8.3.6",
+    "vite": "^8.3.8",
     "vitest": "^5.1.0"
   },
   "private": true,
